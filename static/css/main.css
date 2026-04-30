@@ -424,18 +424,215 @@ body {
 
 /* ── HEATMAP ─────────────────────────────────────── */
 .heatmap {
-  display: grid;
-  grid-template-columns: repeat(15, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+  width: 100%;
 }
 .heatmap-cell {
-  aspect-ratio: 1;
-  border-radius: 3px;
+  width: calc((100% - 4px * 14) / 15);
+  height: 28px;
+  border-radius: 4px;
   border: 0.5px solid var(--border);
   background: var(--page);
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 .heatmap-cell.filled { border-width: 1px; }
-@media (max-width: 520px) {
-  .heatmap { grid-template-columns: repeat(10, 1fr); }
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 600px) {
+  .heatmap-cell {
+    width: calc((100% - 4px * 9) / 10);
+    height: 24px;
+  }
+}
+
+/* ── VOICE SELECTOR ──────────────────────────────── */
+.voice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media(max-width:520px){ .voice-grid { grid-template-columns: 1fr; } }
+
+.voice-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.voice-card:hover    { border-color: var(--purple); }
+.voice-card.selected { border-color: var(--purple); background: var(--purple-lt); }
+
+.voice-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 500; color: white;
+  flex-shrink: 0;
+}
+.voice-avatar.female { background: #993556; }
+.voice-avatar.male   { background: #185FA5; }
+
+.voice-info   { flex: 1; min-width: 0; }
+.voice-name   { font-size: 13px; font-weight: 500; color: var(--text); }
+.voice-gender { font-size: 11px; font-weight: 400; color: var(--text-hint);
+                margin-left: 5px; }
+.voice-desc   { font-size: 12px; color: var(--text-hint); margin-top: 2px;
+                line-height: 1.4; }
+
+.voice-preview-btn {
+  font-size: 11px; padding: 4px 10px;
+  border-radius: 6px;
+  border: 0.5px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; white-space: nowrap;
+  font-family: inherit;
+}
+.voice-preview-btn:hover { background: var(--purple-lt); color: var(--purple); }
+
+/* ── CALENDAR FILTER ─────────────────────────────── */
+.cal-wrap {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.cal-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.cal-tab {
+  padding: 5px 16px;
+  border-radius: 6px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.cal-tab.active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: white;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cal-period { font-size: 14px; font-weight: 500; color: var(--text); }
+.cal-arrow  {
+  background: transparent; border: none;
+  font-size: 20px; color: var(--text-muted);
+  cursor: pointer; padding: 0 8px;
+  line-height: 1;
+}
+.cal-arrow:hover { color: var(--purple); }
+
+/* Month grid */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.cal-dow {
+  font-size: 11px; font-weight: 500;
+  color: var(--text-hint);
+  text-align: center;
+  padding-bottom: 4px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 0.5px solid transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.1s;
+}
+.cal-day:hover    { background: var(--purple-lt); color: var(--purple); }
+.cal-today        { font-weight: 600; color: var(--purple); }
+.cal-selected     { background: var(--purple) !important;
+                    color: white !important; border-color: var(--purple) !important; }
+
+/* Week row */
+.week-row {
+  display: flex;
+  gap: 6px;
+}
+.week-cell {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 10px 4px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.week-cell:hover { background: var(--purple-lt); }
+.week-dow { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+.week-num { font-size: 15px; font-weight: 500; color: var(--text); }
+
+
+/* ── LANGUAGE HINT ───────────────────────────────── */
+.lang-hint {
+  font-size: 12px;
+  color: var(--purple);
+  background: var(--purple-lt);
+  border-radius: 6px;
+  padding: 8px 12px;
+  line-height: 1.5;
+}
+
+/* ── GOOGLE BUTTON ───────────────────────────────── */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  margin-bottom: 16px;
+}
+.btn-google:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+/* ── AUTH DIVIDER ────────────────────────────────── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: var(--text-hint);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--border);
 }

@@ -2,7 +2,10 @@
 {% block title %}History — MindEcho{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Your entries</h1>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+  <h1 class="page-title" style="margin-bottom:0;">Your entries</h1>
+  <a href="{{ url_for('journal.write') }}" class="btn btn-primary">+ New entry</a>
+</div>
 <p class="page-sub">Everything you've written, saved privately.</p>
 
 {% if not entries %}
@@ -13,14 +16,58 @@
 </div>
 
 {% else %}
+
+<!-- CALENDAR FILTER -->
+<div class="cal-wrap">
+
+  <!-- Month/Week toggle -->
+  <div class="cal-toggle">
+    <button class="cal-tab active" id="tab-month" onclick="setView('month')">Month</button>
+    <button class="cal-tab"        id="tab-week"  onclick="setView('week')">Week</button>
+  </div>
+
+  <!-- Month view navigator -->
+  <div id="month-nav" class="cal-nav">
+    <button class="cal-arrow" onclick="shiftMonth(-1)">‹</button>
+    <span class="cal-period" id="month-label"></span>
+    <button class="cal-arrow" onclick="shiftMonth(1)">›</button>
+  </div>
+
+  <!-- Week view navigator -->
+  <div id="week-nav" class="cal-nav" style="display:none;">
+    <button class="cal-arrow" onclick="shiftWeek(-1)">‹</button>
+    <span class="cal-period" id="week-label"></span>
+    <button class="cal-arrow" onclick="shiftWeek(1)">›</button>
+  </div>
+
+  <!-- Month calendar grid -->
+  <div id="month-grid" class="cal-grid">
+    <div class="cal-dow">Sun</div><div class="cal-dow">Mon</div>
+    <div class="cal-dow">Tue</div><div class="cal-dow">Wed</div>
+    <div class="cal-dow">Thu</div><div class="cal-dow">Fri</div>
+    <div class="cal-dow">Sat</div>
+  </div>
+
+  <!-- Week row -->
+  <div id="week-grid" class="week-row" style="display:none;"></div>
+
+</div>
+
+<!-- ENTRY COUNT -->
+<div id="filter-summary" style="font-size:13px;color:var(--text-hint);margin-bottom:16px;"></div>
+
+<!-- ENTRIES LIST -->
+<div id="entries-list">
   {% for entry in entries %}
-  <div class="card" style="margin-bottom:16px;">
+  <div class="entry-card card"
+       data-date="{{ entry.created_at[:10] }}"
+       style="margin-bottom:16px;">
     <div class="card-header">
-      <div>
+      <div style="display:flex;align-items:center;gap:10px;">
         <span class="badge mood-badge" data-mood="{{ entry.mood }}">
           {{ entry.mood | capitalize }}
         </span>
-        <span style="font-size:12px;color:var(--text-hint);margin-left:10px;">
+        <span style="font-size:12px;color:var(--text-hint);">
           {{ entry.created_at[:10] }}
         </span>
       </div>
@@ -48,6 +95,7 @@
     {% endif %}
   </div>
   {% endfor %}
+</div>
 {% endif %}
 
 <script>
@@ -56,13 +104,188 @@ const MOOD_COLORS = {
   anxious:"#FF9800", overwhelmed:"#FF5722",
   sad:"#5C6BC0", angry:"#F44336", numb:"#9E9E9E"
 };
+
+// Colour mood badges
 document.querySelectorAll('.mood-badge').forEach(badge => {
-  const mood = badge.dataset.mood;
-  if (MOOD_COLORS[mood]) {
-    badge.style.background = MOOD_COLORS[mood] + '22';
-    badge.style.color      = MOOD_COLORS[mood];
-    badge.style.border     = `0.5px solid ${MOOD_COLORS[mood]}55`;
+  const c = MOOD_COLORS[badge.dataset.mood];
+  if (c) {
+    badge.style.background = c + '22';
+    badge.style.color      = c;
+    badge.style.border     = `0.5px solid ${c}55`;
   }
 });
+
+// Build entry date map  { "2026-04-28": [card, card] }
+const entryMap = {};
+document.querySelectorAll('.entry-card').forEach(card => {
+  const d = card.dataset.date;
+  if (!entryMap[d]) entryMap[d] = [];
+  entryMap[d].push(card);
+});
+
+let currentView  = 'month';
+let currentDate  = new Date();
+let selectedDate = null;
+
+// ── MONTH VIEW ──────────────────────────────────
+function renderMonth() {
+  const year  = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const label = currentDate.toLocaleString('default', {month:'long', year:'numeric'});
+  document.getElementById('month-label').textContent = label;
+
+  const grid    = document.getElementById('month-grid');
+  const dayDivs = grid.querySelectorAll('.cal-day');
+  dayDivs.forEach(d => d.remove());
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Blank cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const blank = document.createElement('div');
+    grid.appendChild(blank);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell    = document.createElement('div');
+    cell.className   = 'cal-day';
+    cell.textContent = d;
+
+    if (entryMap[dateStr]) {
+      const mood = entryMap[dateStr][0].dataset.mood ||
+                   entryMap[dateStr][0].querySelector('.mood-badge')?.dataset.mood;
+      const c    = MOOD_COLORS[mood] || '#534AB7';
+      cell.style.background   = c + '33';
+      cell.style.borderColor  = c;
+      cell.style.color        = c;
+      cell.style.fontWeight   = '500';
+      cell.title = `${entryMap[dateStr].length} entry`;
+    }
+
+    const today = new Date();
+    if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+      cell.classList.add('cal-today');
+    }
+
+    if (selectedDate === dateStr) cell.classList.add('cal-selected');
+
+    cell.onclick = () => filterByDate(dateStr, cell);
+    cell.classList.add('cal-day');
+    grid.appendChild(cell);
+  }
+}
+
+function shiftMonth(dir) {
+  currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + dir, 1);
+  selectedDate = null;
+  renderMonth();
+  showAll();
+}
+
+// ── WEEK VIEW ──────────────────────────────────
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+function renderWeek() {
+  const weekStart = getWeekStart(currentDate);
+  const weekEnd   = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const fmt = d => d.toLocaleString('default', {month:'short', day:'numeric'});
+  document.getElementById('week-label').textContent =
+    `${fmt(weekStart)} – ${fmt(weekEnd)}`;
+
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < 7; i++) {
+    const day     = new Date(weekStart);
+    day.setDate(day.getDate() + i);
+    const dateStr = day.toISOString().slice(0,10);
+
+    const cell    = document.createElement('div');
+    cell.className   = 'week-cell';
+    cell.innerHTML   = `<div class="week-dow">${['Su','Mo','Tu','We','Th','Fr','Sa'][i]}</div>
+                        <div class="week-num">${day.getDate()}</div>`;
+
+    if (entryMap[dateStr]) {
+      const mood = entryMap[dateStr][0].querySelector('.mood-badge')?.dataset.mood;
+      const c    = MOOD_COLORS[mood] || '#534AB7';
+      cell.style.background  = c + '33';
+      cell.style.borderColor = c;
+    }
+
+    const today = new Date();
+    if (dateStr === today.toISOString().slice(0,10)) cell.classList.add('cal-today');
+    if (selectedDate === dateStr) cell.classList.add('cal-selected');
+
+    cell.onclick = () => filterByDate(dateStr, cell);
+    grid.appendChild(cell);
+  }
+}
+
+function shiftWeek(dir) {
+  currentDate.setDate(currentDate.getDate() + dir * 7);
+  selectedDate = null;
+  renderWeek();
+  showAll();
+}
+
+// ── FILTER ──────────────────────────────────────
+function filterByDate(dateStr, clickedCell) {
+  // Toggle off if already selected
+  if (selectedDate === dateStr) {
+    selectedDate = null;
+    document.querySelectorAll('.cal-day, .week-cell').forEach(c => c.classList.remove('cal-selected'));
+    showAll();
+    return;
+  }
+
+  selectedDate = dateStr;
+  document.querySelectorAll('.cal-day, .week-cell').forEach(c => c.classList.remove('cal-selected'));
+  clickedCell.classList.add('cal-selected');
+
+  let shown = 0;
+  document.querySelectorAll('.entry-card').forEach(card => {
+    if (card.dataset.date === dateStr) {
+      card.style.display = 'block';
+      shown++;
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  const summary = document.getElementById('filter-summary');
+  summary.textContent = shown
+    ? `Showing ${shown} entr${shown > 1 ? 'ies' : 'y'} for ${dateStr}`
+    : `No entries for ${dateStr}`;
+}
+
+function showAll() {
+  document.querySelectorAll('.entry-card').forEach(c => c.style.display = 'block');
+  document.getElementById('filter-summary').textContent = '';
+}
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('tab-month').classList.toggle('active', view === 'month');
+  document.getElementById('tab-week').classList.toggle('active',  view === 'week');
+  document.getElementById('month-nav').style.display  = view === 'month' ? 'flex' : 'none';
+  document.getElementById('week-nav').style.display   = view === 'week'  ? 'flex' : 'none';
+  document.getElementById('month-grid').style.display = view === 'month' ? 'grid' : 'none';
+  document.getElementById('week-grid').style.display  = view === 'week'  ? 'flex' : 'none';
+  selectedDate = null;
+  showAll();
+  if (view === 'month') renderMonth();
+  else                  renderWeek();
+}
+
+// Init
+renderMonth();
 </script>
 {% endblock %}

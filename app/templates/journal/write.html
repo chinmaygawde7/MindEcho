@@ -9,37 +9,62 @@
     <p class="page-sub">Write freely. This is just for you.</p>
   </div>
 
-  <!-- MOOD PICKER -->
+  <!-- STEP 1: LANGUAGE -->
+  <div class="card" style="margin-bottom:20px;">
+    <div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:12px;">
+      Step 1 — Choose your language
+    </div>
+    <div class="field" style="margin-bottom:8px;">
+      <select id="language" onchange="onLanguageChange()">
+        {% for key, label in languages.items() %}
+        <option value="{{ key }}" {% if key == 'English' %}selected{% endif %}>
+          {{ label }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="lang-hint" id="lang-hint">
+      You can type in English — Claude will write your reflection in the selected language.
+    </div>
+  </div>
+
+  <!-- STEP 2: VOICE -->
+  <div class="card" style="margin-bottom:24px;">
+    <div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:14px;">
+      Step 2 — Choose your reflection voice
+    </div>
+    <div class="voice-grid" id="voice-grid">
+      <!-- Populated dynamically by JS -->
+    </div>
+    <audio id="preview-audio" style="display:none;"></audio>
+    <div id="preview-loading"
+         style="display:none;font-size:12px;color:var(--text-hint);margin-top:8px;">
+      Loading preview…
+    </div>
+  </div>
+
+  <!-- STEP 3: MOOD -->
+  <div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:10px;">
+    Step 3 — How are you feeling?
+  </div>
   <div class="mood-row" id="mood-row">
     {% for mood in moods %}
-    <button
-      type="button"
-      class="mood-btn"
-      data-mood="{{ mood }}"
-      onclick="selectMood('{{ mood }}')"
-    >
+    <button type="button" class="mood-btn" data-mood="{{ mood }}"
+            onclick="selectMood('{{ mood }}')">
       {{ mood | capitalize }}
     </button>
     {% endfor %}
   </div>
 
-  <!-- LANGUAGE -->
-  <div class="field" style="max-width:200px;margin-bottom:20px;">
-    <label for="language">Language</label>
-    <select id="language">
-      {% for key, label in languages.items() %}
-      <option value="{{ key }}" {% if key == 'English' %}selected{% endif %}>
-        {{ label }}
-      </option>
-      {% endfor %}
-    </select>
+  <!-- STEP 4: WRITE -->
+  <div style="font-size:13px;font-weight:500;color:var(--text-muted);
+              margin-bottom:10px;margin-top:4px;">
+    Step 4 — Write your entry
   </div>
-
-  <!-- JOURNAL TEXT -->
   <div class="field">
     <textarea
       id="entry-text"
-      placeholder="Start writing... there's no wrong way to do this."
+      placeholder="Start writing... there's no wrong way to do this. Type in any language you're comfortable with."
       rows="8"
       style="font-family:'Lora',serif;font-size:16px;line-height:1.8;"
     ></textarea>
@@ -61,7 +86,7 @@
     <div class="reflection-label">Your reflection</div>
     <p class="reflection-text" id="reflection-text"></p>
     <audio id="reflection-audio" controls style="width:100%;margin-top:16px;"></audio>
-    <div style="margin-top:16px;display:flex;gap:10px;">
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-ghost" onclick="resetForm()">Write another entry</button>
       <a href="{{ url_for('journal.history') }}" class="btn btn-ghost">View history</a>
     </div>
@@ -70,7 +95,119 @@
 </div>
 
 <script>
-let selectedMood = "";
+let selectedMood     = "";
+let selectedVoiceKey = "";
+let currentLanguage  = "English";
+
+const LANG_HINTS = {
+  "English":  "Your reflection will be written and spoken in English.",
+  "Hindi":    "You can type in English — your reflection will be written and spoken in Hindi (हिन्दी).",
+  "Marathi":  "You can type in English — your reflection will be written in Marathi. Voice will use Hindi as the closest match.",
+  "Tamil":    "You can type in English — your reflection will be written and spoken in Tamil (தமிழ்).",
+  "Telugu":   "You can type in English — your reflection will be written in Telugu. Voice will use Hindi as the closest match.",
+  "Kannada":  "You can type in English — your reflection will be written in Kannada. Voice will use Hindi as the closest match.",
+  "Bengali":  "You can type in English — your reflection will be written in Bengali. Voice will use Hindi as the closest match.",
+  "Gujarati": "You can type in English — your reflection will be written in Gujarati. Voice will use Hindi as the closest match.",
+  "Punjabi":  "You can type in English — your reflection will be written in Punjabi. Voice will use Hindi as the closest match.",
+};
+
+function onLanguageChange() {
+  const lang = document.getElementById('language').value;
+  currentLanguage = lang;
+
+  // Update hint
+  document.getElementById('lang-hint').textContent =
+    LANG_HINTS[lang] || LANG_HINTS["Hindi"];
+
+  // Reset voice selection
+  selectedVoiceKey = "";
+
+  // Fetch new voice set for this language
+  fetch(`/voices-for-language/${encodeURIComponent(lang)}`)
+    .then(r => r.json())
+    .then(voices => renderVoiceGrid(voices, lang))
+    .catch(() => console.error('Could not load voices'));
+}
+
+function renderVoiceGrid(voices, language) {
+  const grid = document.getElementById('voice-grid');
+  grid.innerHTML = '';
+  selectedVoiceKey = '';
+
+  Object.entries(voices).forEach(([key, voice], idx) => {
+    const card = document.createElement('div');
+    card.className      = 'voice-card' + (idx === 0 ? ' selected' : '');
+    card.dataset.key    = key;
+    card.dataset.id     = voice.id;
+    card.onclick        = () => selectVoice(card);
+
+    if (idx === 0) selectedVoiceKey = key;
+
+    card.innerHTML = `
+      <div class="voice-avatar ${voice.gender}">${voice.name[0]}</div>
+      <div class="voice-info">
+        <div class="voice-name">${voice.name}
+          <span class="voice-gender">${voice.gender === 'female' ? 'Female' : 'Male'}</span>
+        </div>
+        <div class="voice-desc">${voice.description}</div>
+      </div>
+      <button class="voice-preview-btn"
+              onclick="previewVoice(event,'${key}','${language}')">▶ Preview</button>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Save first voice as default
+  if (selectedVoiceKey) {
+    fetch('/save-voice', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({voice_key: selectedVoiceKey}),
+    });
+  }
+}
+
+function selectVoice(card) {
+  document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedVoiceKey = card.dataset.key;
+
+  fetch('/save-voice', {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json'},
+    body:    JSON.stringify({voice_key: selectedVoiceKey}),
+  });
+}
+
+function previewVoice(e, voiceKey, language) {
+  e.stopPropagation();
+  const audio   = document.getElementById('preview-audio');
+  const loading = document.getElementById('preview-loading');
+  const btn     = e.target;
+
+  btn.textContent = '…';
+  btn.disabled    = true;
+  loading.style.display = 'block';
+
+  audio.pause();
+  audio.src = '';
+
+  fetch(`/voice-preview/${voiceKey}?language=${encodeURIComponent(language)}`)
+    .then(res => res.blob())
+    .then(blob => {
+      audio.src           = URL.createObjectURL(blob);
+      audio.style.display = 'block';
+      audio.play();
+      loading.style.display = 'none';
+      btn.textContent       = '▶ Preview';
+      btn.disabled          = false;
+    })
+    .catch(() => {
+      loading.style.display = 'none';
+      btn.textContent       = '▶ Preview';
+      btn.disabled          = false;
+    });
+}
 
 function selectMood(mood) {
   selectedMood = mood;
@@ -79,26 +216,25 @@ function selectMood(mood) {
 }
 
 document.getElementById('entry-text').addEventListener('input', function() {
-  document.getElementById('char-count').textContent =
-    this.value.length + ' characters';
+  document.getElementById('char-count').textContent = this.value.length + ' characters';
 });
 
 async function submitEntry() {
-  const text     = document.getElementById('entry-text').value.trim();
-  const language = document.getElementById('language').value;
+  const text = document.getElementById('entry-text').value.trim();
 
-  if (!selectedMood) { alert('Please select a mood first.'); return; }
-  if (!text)          { alert('Please write something first.'); return; }
+  if (!selectedMood)     { alert('Please select a mood first.'); return; }
+  if (!text)             { alert('Please write something first.'); return; }
+  if (!selectedVoiceKey) { alert('Please select a voice first.'); return; }
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
 
-  document.getElementById('generating').style.display = 'flex';
+  document.getElementById('generating').style.display      = 'flex';
   document.getElementById('reflection-wrap').style.display = 'none';
 
   const msgs = [
     'Reading your entry…',
-    'Writing your reflection…',
+    `Writing your reflection in ${currentLanguage}…`,
     'Preparing your voice response…',
   ];
   let i = 0;
@@ -114,7 +250,8 @@ async function submitEntry() {
       body:    JSON.stringify({
         entry_text: text,
         mood:       selectedMood,
-        language:   language,
+        language:   currentLanguage,
+        voice_key:  selectedVoiceKey,
       }),
     });
     const data = await res.json();
@@ -127,10 +264,10 @@ async function submitEntry() {
       return;
     }
 
-    document.getElementById('generating').style.display    = 'none';
+    document.getElementById('generating').style.display      = 'none';
     document.getElementById('reflection-wrap').style.display = 'block';
-    document.getElementById('reflection-text').textContent  = data.reflection;
-    document.getElementById('reflection-audio').src         = data.audio_url;
+    document.getElementById('reflection-text').textContent   = data.reflection;
+    document.getElementById('reflection-audio').src          = data.audio_url;
     document.getElementById('reflection-audio').play();
     btn.disabled = false;
 
@@ -143,11 +280,14 @@ async function submitEntry() {
 }
 
 function resetForm() {
-  document.getElementById('entry-text').value           = '';
-  document.getElementById('char-count').textContent     = '0 characters';
-  document.getElementById('reflection-wrap').style.display = 'none';
+  document.getElementById('entry-text').value                = '';
+  document.getElementById('char-count').textContent          = '0 characters';
+  document.getElementById('reflection-wrap').style.display   = 'none';
   selectedMood = '';
   document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
 }
+
+// Init — load English voices on page load
+onLanguageChange();
 </script>
 {% endblock %}

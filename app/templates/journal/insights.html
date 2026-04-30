@@ -52,7 +52,6 @@
 {% endif %}
 
 <!-- CALENDAR HEATMAP -->
-{% if days %}
 <div class="card" style="margin-bottom:16px;">
   <div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:16px;">
     Last 30 days
@@ -61,15 +60,25 @@
     {% for i in range(30) %}
       {% set day = (today - timedelta(days=29-i)).isoformat() %}
       {% set mood = days.get(day, '') %}
-      <div class="heatmap-cell {{ 'filled' if mood else 'empty' }}"
+      <div class="heatmap-cell {{ 'filled' if mood else '' }}"
            title="{{ day }}{% if mood %} — {{ mood }}{% endif %}"
-           {% if mood %}style="background:{{ mood_colors.get(mood, '#ccc') }}55;
-           border-color:{{ mood_colors.get(mood, '#ccc') }};"{% endif %}>
+           {% if mood %}
+           style="background:{{ mood_colors.get(mood, '#ccc') }}55;
+                  border-color:{{ mood_colors.get(mood, '#ccc') }};"
+           {% endif %}>
       </div>
     {% endfor %}
   </div>
+  <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+    {% for mood, color in mood_colors.items() %}
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-hint);">
+      <div style="width:10px;height:10px;border-radius:2px;
+                  background:{{ color }}55;border:1px solid {{ color }};"></div>
+      {{ mood | capitalize }}
+    </div>
+    {% endfor %}
+  </div>
 </div>
-{% endif %}
 
 <!-- WEEKLY SUMMARIES -->
 {% if summaries %}

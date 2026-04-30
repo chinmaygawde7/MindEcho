@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signing in — MindEcho</title>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f7f6f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .wrap {
+      text-align: center;
+      color: #5f5e5a;
+    }
+    .dot-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #534AB7;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.3; transform: scale(0.7); }
+    }
+    .msg { font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="dot-row">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <div class="msg" id="msg">Signing you in…</div>
+  </div>
+
+<script>
+  // Supabase puts tokens in the URL hash after OAuth redirect
+  // e.g. #access_token=xxx&refresh_token=yyy&type=signup
+  const hash   = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+
+  const accessToken  = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+
+  if (!accessToken) {
+    document.getElementById('msg').textContent = 'Sign in failed. Redirecting…';
+    setTimeout(() => window.location.href = '/auth/login', 2000);
+  } else {
+    fetch('/auth/session', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({
+        access_token:  accessToken,
+        refresh_token: refreshToken,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = '/write';
+      } else {
+        document.getElementById('msg').textContent = 'Sign in failed. Redirecting…';
+        setTimeout(() => window.location.href = '/auth/login', 2000);
+      }
+    })
+    .catch(() => {
+      document.getElementById('msg').textContent = 'Something went wrong. Redirecting…';
+      setTimeout(() => window.location.href = '/auth/login', 2000);
+    });
+  }
+</script>
+</body>
+</html>
