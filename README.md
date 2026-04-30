@@ -85,88 +85,63 @@ No diagnosis. No advice. Just presence.
 ### Sign Up / Login
 > Google OAuth and email authentication
 
-```
 ![Login page](screenshots/login.png)
-```
 
 ---
 
 ### Onboarding — Choose Language & Voice
 > Language selector with dynamic voice set, live audio preview for each voice
 
-```
 ![Write page](screenshots/write.png)
-```
 
 ---
 
 ### Write an Entry
 > Mood picker, language hint, free-form text area
 
-<!-- Add screenshot here -->
-```
 ![entry page](screenshots/entry.png)
-```
 
 ---
 
 ### Reflection Player
 > Claude's reflection shown in italic, ElevenLabs audio playing automatically
 
-<!-- Add screenshot here -->
-```
 ![reflection page](screenshots/reflection.png)
-```
 
 ---
 
 ### Entry History
 > Past entries with calendar filter (month/week view)
 
-<!-- Add screenshot here -->
-```
 ![calendar page](screenshots/calendar.png)
-```
 
 ---
 
 ### Calendar Filter — Month View
 > Days with entries highlighted in mood colour, click to filter
 
-<!-- Add screenshot here -->
-```
 ![calendar_month page](screenshots/calendar_month.png)
-```
 
 ---
 
 ### Calendar Filter — Week View
 > 7-day row with mood-coloured cells
 
-<!-- Add screenshot here -->
-```
 ![calendar_week page](screenshots/calendar_week.png)
-```
 
 ---
 
 ### Insights Dashboard
 > Stats row, mood breakdown bars, 30-day heatmap, weekly summaries
 
-<!-- Add screenshot here -->
-```
+
 ![insights page](screenshots/insights.png)
-```
 
 ---
 
 ### Weekly Email
 > Sunday morning delivery with audio link and written summary
 
-<!-- Add screenshot here -->
-```
-[ screenshot: weekly email in inbox ]
-```
 
 ---
 
